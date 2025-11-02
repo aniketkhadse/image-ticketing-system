@@ -1,5 +1,3 @@
-const fetch = require("node-fetch");
-
 const sendEmail = async (to, subject, html, fromName = "Ticketing System") => {
   try {
     console.log("📧 Attempting to send email via SendGrid HTTP API...");
@@ -32,7 +30,9 @@ const sendEmail = async (to, subject, html, fromName = "Ticketing System") => {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("❌ SendGrid API Error:", errText);
+      console.error("❌ SendGrid API Error:");
+      console.error("  Status:", response.status);
+      console.error("  Response:", errText);
       return false;
     }
 
