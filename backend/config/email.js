@@ -1,35 +1,42 @@
-const nodemailer = require("nodemailer");
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.sendgrid.net",
-  port: 587,
-  secure: false, // use TLS
-  auth: {
-    user: "apikey", // always use this literal string
-    pass: process.env.SENDGRID_API_KEY, // your actual API key
-  },
-});
+const fetch = require("node-fetch");
 
 const sendEmail = async (to, subject, html, fromName = "Ticketing System") => {
   try {
-    console.log("📧 Attempting to send email via SendGrid SMTP...");
+    console.log("📧 Attempting to send email via SendGrid HTTP API...");
     console.log("  To:", to);
     console.log("  Subject:", subject);
     console.log("  SENDGRID_API_KEY present:", !!process.env.SENDGRID_API_KEY);
 
-    const mailOptions = {
-      from: `"${fromName}" <aniket@aristasystems.in>`, // must match a verified domain/sender
-      to,
-      subject,
-      html,
-    };
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [
+          {
+            to: [{ email: to }],
+            subject: subject,
+          },
+        ],
+        from: { email: "aniket@aristasystems.in", name: fromName },
+        content: [
+          {
+            type: "text/html",
+            value: html,
+          },
+        ],
+      }),
+    });
 
-    const info = await transporter.sendMail(mailOptions);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("❌ SendGrid API Error:", errText);
+      return false;
+    }
 
-    console.log("✅ Email sent successfully!");
-    console.log("  Message ID:", info.messageId || "N/A");
-    console.log("  Response:", info.response);
-
+    console.log("✅ Email sent successfully via SendGrid API!");
     return true;
   } catch (error) {
     console.error("❌ Email sending FAILED!");
