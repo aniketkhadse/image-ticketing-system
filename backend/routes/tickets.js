@@ -1,10 +1,9 @@
 const express = require("express");
+const router = express.Router();
 const Ticket = require("../models/Ticket");
 const User = require("../models/User");
 const { auth, adminAuth } = require("../middleware/auth");
 const { sendEmail } = require("../config/email");
-
-const router = express.Router();
 
 // Create Ticket
 router.post("/", auth, async (req, res) => {
@@ -15,7 +14,6 @@ router.post("/", auth, async (req, res) => {
 
     const { folderPath, query } = req.body;
 
-    // Validate input
     if (!folderPath || !query) {
       console.log("Validation failed: Missing folderPath or query");
       return res
@@ -23,7 +21,6 @@ router.post("/", auth, async (req, res) => {
         .json({ message: "Folder path and query are required" });
     }
 
-    // Find user
     console.log("Finding user...");
     const user = await User.findById(req.userId);
 
@@ -33,9 +30,8 @@ router.post("/", auth, async (req, res) => {
     }
 
     console.log("User found:", user.name, user.email);
-
-    // Create ticket
     console.log("Creating ticket...");
+
     const ticket = new Ticket({
       userId: req.userId,
       senderName: user.name,
@@ -53,10 +49,9 @@ router.post("/", auth, async (req, res) => {
     try {
       console.log("Sending email to admin...");
       const adminEmail = process.env.ADMIN_EMAIL;
-      console.log("Admin email:", adminEmail);
 
       if (adminEmail) {
-        const emailSent = await sendEmail(
+        await sendEmail(
           adminEmail,
           `New Ticket from ${user.name}`,
           `
@@ -68,9 +63,6 @@ router.post("/", auth, async (req, res) => {
           `,
           user.name
         );
-        console.log("Email sent status:", emailSent);
-      } else {
-        console.log("⚠️ Admin email not configured");
       }
     } catch (emailError) {
       console.error("Email sending failed (non-critical):", emailError.message);
@@ -82,10 +74,7 @@ router.post("/", auth, async (req, res) => {
     console.error("=== CREATE TICKET ERROR ===");
     console.error("Error message:", error.message);
     console.error("Error stack:", error.stack);
-    res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -176,10 +165,7 @@ router.patch("/:id/status", adminAuth, async (req, res) => {
   } catch (error) {
     console.error("Update Ticket Error:", error.message);
     console.error("Error stack:", error.stack);
-    res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -202,7 +188,6 @@ router.post("/:id/comment", auth, async (req, res) => {
     });
 
     await ticket.save();
-
     res.json({ message: "Comment added", ticket });
   } catch (error) {
     console.error("Add Comment Error:", error);
@@ -249,21 +234,17 @@ router.get("/stats/dashboard", adminAuth, async (req, res) => {
   try {
     console.log("Fetching dashboard statistics...");
 
-    // Count tickets by status
     const totalTickets = await Ticket.countDocuments();
     const pendingTickets = await Ticket.countDocuments({ status: "pending" });
     const solvedTickets = await Ticket.countDocuments({ status: "solved" });
     const errorTickets = await Ticket.countDocuments({ status: "error" });
 
-    // Get database size estimation
     const tickets = await Ticket.find().lean();
     const dbSizeBytes = JSON.stringify(tickets).length;
     const dbSizeMB = (dbSizeBytes / (1024 * 1024)).toFixed(2);
 
-    // Get users count (excluding admins)
     const totalUsers = await User.countDocuments({ isAdmin: false });
 
-    // Recent activity (last 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentTickets = await Ticket.countDocuments({
       createdAt: { $gte: sevenDaysAgo },
@@ -279,7 +260,7 @@ router.get("/stats/dashboard", adminAuth, async (req, res) => {
       dbSize: {
         mb: dbSizeMB,
         bytes: dbSizeBytes,
-        maxSize: "512", // MongoDB Atlas free tier limit
+        maxSize: "512",
         percentage: ((parseFloat(dbSizeMB) / 512) * 100).toFixed(2),
       },
     };
