@@ -18,7 +18,7 @@ const sendEmail = async (to, subject, html, fromName = "Ticketing System") => {
             subject: subject,
           },
         ],
-        from: { email: "aniket@aristasystems.in", name: fromName },
+        from: { email: "darren@aristasystems.in", name: fromName },
         content: [
           {
             type: "text/html",
