@@ -11,7 +11,7 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// 🟢 User Signup
+// User Signup
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -23,37 +23,8 @@ router.post('/signup', async (req, res) => {
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
-
     if (existingUser) {
-      if (existingUser.isVerified) {
-        return res.status(400).json({ message: 'Email already registered and verified. Please log in.' });
-      } else {
-        // Unverified user - resend OTP and update expiry
-        const newOtp = generateOTP();
-        existingUser.otp = newOtp;
-        existingUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-        await existingUser.save();
-
-        // Resend OTP
-        const emailSent = await sendEmail(
-          email,
-          'Email Verification - Resent OTP',
-          `
-            <h2>Complete Your Registration</h2>
-            <p>Your new OTP for verification is: <strong>${newOtp}</strong></p>
-            <p>This OTP will expire in 10 minutes.</p>
-          `
-        );
-
-        if (!emailSent) {
-          return res.status(500).json({ message: 'Failed to resend OTP email' });
-        }
-
-        return res.status(200).json({
-          message:
-            'You already have an unverified account. A new OTP has been sent to your email. Please verify to complete registration.'
-        });
-      }
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Hash password
@@ -63,7 +34,7 @@ router.post('/signup', async (req, res) => {
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Create new user
+    // Create user
     const user = new User({
       name,
       email,
@@ -97,7 +68,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// 🟢 Verify OTP
+// Verify OTP
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -132,44 +103,7 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// 🟢 Resend OTP (manual trigger)
-router.post('/resend-otp', async (req, res) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ message: 'Email already verified' });
-    }
-
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-    await user.save();
-
-    await sendEmail(
-      email,
-      'Email Verification - New OTP',
-      `
-        <h2>Verification Required</h2>
-        <p>Your new OTP is: <strong>${otp}</strong></p>
-        <p>This OTP will expire in 10 minutes.</p>
-      `
-    );
-
-    res.json({ message: 'New OTP sent successfully' });
-  } catch (error) {
-    console.error('Resend OTP Error:', error);
-    res.status(500).json({ message: 'Server error while resending OTP' });
-  }
-});
-
-// 🟢 User Login
+// User Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -211,15 +145,17 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 🟢 Admin Login
+// Admin Login
 router.post('/admin-login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check hardcoded admin credentials
     if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
       return res.status(401).json({ message: 'Invalid admin credentials' });
     }
 
+    // Find or create admin user
     let adminUser = await User.findOne({ email: process.env.ADMIN_EMAIL });
 
     if (!adminUser) {
@@ -255,7 +191,7 @@ router.post('/admin-login', async (req, res) => {
   }
 });
 
-// 🟢 Forgot Password - Send OTP
+// Forgot Password - Send OTP
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -290,7 +226,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// 🟢 Reset Password
+// Reset Password
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
